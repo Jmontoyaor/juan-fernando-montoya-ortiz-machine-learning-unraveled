@@ -21,6 +21,14 @@ class ModelTests(unittest.TestCase):
         # (3*3*1*32+32) + (3*3*32*64+64) + (24*24*64*10+10)
         self.assertEqual(cnn.count_params(), 387_466)
 
+    def test_pooling_architecture_from_scratchpad_3(self):
+        pool = build_model("cnn_pool")
+        self.assertEqual(pool.output_shape, (None, 10))
+        self.assertEqual(pool.get_layer("pool_1").output.shape[1:], (14, 14, 32))
+        self.assertEqual(pool.get_layer("pool_2").output.shape[1:], (7, 7, 64))
+        # (9*1*32+32) + (9*32*64+64) + (7*7*64*10+10)
+        self.assertEqual(pool.count_params(), 50_186)
+
     def test_input_shapes(self):
         images = np.random.default_rng(0).random((5, 28, 28), dtype=np.float32)
         self.assertEqual(for_model(images, "dense").shape, (5, 784))
@@ -30,7 +38,7 @@ class ModelTests(unittest.TestCase):
         rng = np.random.default_rng(0)
         images = rng.random((64, 28, 28), dtype=np.float32)
         labels = rng.integers(0, 10, 64)
-        for kind in ("dense", "cnn"):
+        for kind in ("dense", "cnn", "cnn_pool"):
             model = build_model(kind)
             model.fit(for_model(images, kind), labels, epochs=1, batch_size=32, verbose=0)
             with tempfile.TemporaryDirectory() as tmp:

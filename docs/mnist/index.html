@@ -10,13 +10,13 @@
 :root {
   --bg: #f6f7f9; --panel: #ffffff; --text: #1d2330; --muted: #5b6577; --line: #dde1e8;
   --accent: #2557d6; --accent-soft: #e6edff; --warn-bg: #fff6e0; --warn: #7a5300;
-  --dense: #2557d6; --cnn: #c2410c; --val: #64748b; --ok: #15803d;
+  --dense: #2557d6; --cnn: #c2410c; --pool: #15803d; --val: #64748b; --ok: #15803d;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #11141a; --panel: #1a1f28; --text: #e6e9ef; --muted: #9aa4b5; --line: #2c3340;
     --accent: #7ea2ff; --accent-soft: #1f2a44; --warn-bg: #3a2e12; --warn: #f5cf7a;
-    --dense: #7ea2ff; --cnn: #fb923c; --val: #94a3b8; --ok: #4ade80;
+    --dense: #7ea2ff; --cnn: #fb923c; --pool: #4ade80; --val: #94a3b8; --ok: #4ade80;
   }
 }
 * { box-sizing: border-box; }
@@ -27,7 +27,14 @@ header p { margin: 0; color: var(--muted); }
 a { color: var(--accent); }
 main { max-width: 1280px; margin: 0 auto; padding: 8px 16px 40px; display: grid; grid-template-columns: 320px 1fr; gap: 20px; align-items: start; }
 @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
-main > *, .two > * { min-width: 0; }
+main > *, .two > *, .three > * { min-width: 0; }
+.three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+@media (max-width: 1000px) { .three { grid-template-columns: 1fr; } }
+.filter-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; max-width: 640px; }
+@media (max-width: 600px) { .filter-grid { grid-template-columns: repeat(4, 1fr); } }
+.filter-grid figure { margin: 0; text-align: center; }
+.filter-grid canvas { width: 100%; aspect-ratio: 1; }
+.filter-grid figcaption { margin-top: 1px; font-size: 0.7rem; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
 aside.panel { position: sticky; top: 12px; }
 @media (max-width: 900px) { aside.panel { position: static; } }
@@ -97,7 +104,7 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
 <body>
 <header>
   <h1>MNIST: red densa y red convolucional</h1>
-  <p>Actividad 1 · Las dos redes de <code>scratchpad.py</code>, entrenadas en Python y ejecutadas aquí en tu navegador.
+  <p>Actividad 1 · Red densa, CNN (<code>scratchpad.py</code>) y CNN con pooling (<code>scratchpad_3.ipynb</code>), entrenadas en Python y ejecutadas aquí en tu navegador.
      <a href="https://github.com/Jmontoyaor/juan-fernando-montoya-ortiz-machine-learning-unraveled/tree/main/Actividad/Actividades%201">Código en GitHub</a></p>
 </header>
 <main>
@@ -152,6 +159,7 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
       <button role="tab" data-tab="polarity" aria-selected="true">Fondo negro y trazo blanco</button>
       <button role="tab" data-tab="dense" aria-selected="false">Red densa</button>
       <button role="tab" data-tab="cnn" aria-selected="false">Red convolucional</button>
+      <button role="tab" data-tab="cnn_pool" aria-selected="false">CNN con pooling</button>
       <button role="tab" data-tab="compare" aria-selected="false">Comparación</button>
     </nav>
 
@@ -201,27 +209,38 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
       <pre>Input(28×28×1) → Conv2D(32, 3×3, relu) → Conv2D(64, 3×3, relu) → Flatten → Dense(10, softmax)</pre>
       <p class="muted">Sin pooling ni dropout: arquitectura fiel a <code>scratchpad.py</code>. Por eso casi todos los parámetros están en la capa final (36 864 × 10 + 10).</p>
       <div data-model="cnn"></div>
-      <h3>Qué aprendió la primera capa</h3>
-      <p class="muted">16 de los 32 filtros 3×3 (claro = peso positivo, oscuro = negativo). Son pesos aprendidos, no etiquetas con significado humano.</p>
-      <div class="gallery" id="filters"></div>
-      <h3>Mapas de activación de tu dígito</h3>
-      <p class="muted">Salida 26×26 de 8 filtros: las zonas claras indican dónde el filtro encontró su patrón.</p>
-      <div class="gallery" id="maps"><span class="muted">Dibuja, captura o carga un dígito.</span></div>
+      <div data-viz="cnn"></div>
+    </section>
+
+    <section id="tab-cnn_pool" hidden>
+      <h2>CNN con pooling (scratchpad_3)</h2>
+      <p>Versión actualizada de la clase. Tiene dos cambios frente a la red convolucional anterior:</p>
+      <ul>
+        <li><b>padding="same"</b>: se agrega un borde de ceros alrededor de la imagen para que la convolución 3×3 conserve el tamaño (28 → 28).</li>
+        <li><b>MaxPooling 2×2</b>: de cada bloque de 2×2 valores se queda con el mayor. Reduce el mapa a la mitad (28 → 14 → 7), conserva la respuesta más fuerte de cada zona y da algo de tolerancia a pequeños desplazamientos.</li>
+      </ul>
+      <p><span class="formula">pool<sub>i,j</sub> = max( y<sub>2i,2j</sub>, y<sub>2i,2j+1</sub>, y<sub>2i+1,2j</sub>, y<sub>2i+1,2j+1</sub> )</span></p>
+      <pre>Input(28×28×1) → Conv2D(32, 3×3, same, relu) → MaxPool(2×2) → Conv2D(64, 3×3, same, relu) → MaxPool(2×2) → Flatten → Dense(10, softmax)</pre>
+      <p class="muted">Gracias al pooling, Flatten produce 7×7×64 = 3 136 valores en lugar de 36 864. La última capa pasa de 368 650 a 31 370 parámetros y la red completa tiene 50 186, casi 8 veces menos que la CNN sin pooling.</p>
+      <div data-model="cnn_pool"></div>
+      <div data-viz="cnn_pool"></div>
     </section>
 
     <section id="tab-compare" hidden>
       <h2>Comparación sobre el mismo conjunto de prueba</h2>
       <p class="muted" id="splitNote"></p>
       <div class="table-wrap" id="compareTable"></div>
-      <h3>Tu dígito en ambas redes</h3>
-      <div class="two">
+      <h3>Tu dígito en las tres redes</h3>
+      <div class="three">
         <div><b>Red densa</b><div id="cmp-dense" class="muted">Sin entrada.</div></div>
         <div><b>Red convolucional</b><div id="cmp-cnn" class="muted">Sin entrada.</div></div>
+        <div><b>CNN con pooling</b><div id="cmp-cnn_pool" class="muted">Sin entrada.</div></div>
       </div>
       <p class="note">Las métricas vienen del conjunto de prueba (10 000 imágenes que las redes nunca vieron al entrenar). La predicción de tu dibujo es <b>un solo caso</b>. Una probabilidad softmax alta <b>no garantiza</b> que el resultado sea correcto ni detecta imágenes que no son dígitos: la red siempre reparte el 100 % entre las 10 clases.</p>
-      <div class="two">
+      <div class="three">
         <div id="detail-dense"></div>
         <div id="detail-cnn"></div>
+        <div id="detail-cnn_pool"></div>
       </div>
     </section>
   </div>
@@ -233,14 +252,17 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
 (function () {
   "use strict";
   var DATA = window.MNIST_DATA, Core = window.MnistCore;
-  var NAMES = { dense: "Red densa", cnn: "Red convolucional" };
+  var NAMES = { dense: "Red densa", cnn: "Red convolucional", cnn_pool: "CNN con pooling" };
+  var KINDS = ["dense", "cnn", "cnn_pool"], CONV_KINDS = ["cnn", "cnn_pool"];
+  var COLORS = { dense: "--dense", cnn: "--cnn", cnn_pool: "--pool" };
   var $ = function (id) { return document.getElementById(id); };
   var fmtPct = function (v) { return (v * 100).toFixed(2) + " %"; };
   var fmtInt = function (v) { return Math.round(v).toLocaleString("es-CO"); };
   var css = function (name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); };
 
   if (!DATA || !Core) { $("status").textContent = "No se pudieron cargar los modelos."; $("status").className = "status warn"; return; }
-  var MODELS = { dense: Core.loadModel(DATA.models.dense), cnn: Core.loadModel(DATA.models.cnn) };
+  var MODELS = {};
+  KINDS.forEach(function (k) { MODELS[k] = Core.loadModel(DATA.models[k]); });
 
   /* ------------------------------------------------ drawing helpers */
   function paintGray(canvas, data, w, h, scale) {
@@ -324,8 +346,8 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
   });
   $("samplePixels").innerHTML = pixelTable(Array.from(Core.decodeBase64(DATA.samples[0].image), function (v) { return v / 255; }));
 
-  ["dense", "cnn"].forEach(function (kind) {
-    var m = DATA.models[kind], cfg = m.config, color = css(kind === "dense" ? "--dense" : "--cnn");
+  KINDS.forEach(function (kind) {
+    var m = DATA.models[kind], cfg = m.config, color = css(COLORS[kind]);
     var rows = m.layers.filter(function (l) { return l.type !== "InputLayer"; }).map(function (l) {
       return "<tr><td>" + l.name + " <span class='muted'>(" + l.type + ")</span></td><td>(" + l.output_shape.join(", ") + ")</td><td>" + fmtInt(l.params) + "</td></tr>";
     }).join("");
@@ -356,26 +378,74 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
     });
   });
 
-  var d = DATA.models.dense, c = DATA.models.cnn;
-  $("splitNote").textContent = "Misma partición para ambas: " + fmtInt(d.config.train_samples) + " entrenamiento · " + fmtInt(d.config.validation_samples) +
+  var d = DATA.models.dense, ms = KINDS.map(function (k) { return DATA.models[k]; });
+  $("splitNote").textContent = "Misma partición para las tres: " + fmtInt(d.config.train_samples) + " entrenamiento · " + fmtInt(d.config.validation_samples) +
     " validación (tomada del entrenamiento) · " + fmtInt(d.config.test_samples) + " prueba reservada.";
-  $("compareTable").innerHTML = "<table><tr><th>Métrica</th><th>Red densa</th><th>Red convolucional</th></tr>" +
-    [["Exactitud en prueba", fmtPct(d.metrics.accuracy), fmtPct(c.metrics.accuracy)],
-     ["Pérdida en prueba", d.metrics.loss.toFixed(4), c.metrics.loss.toFixed(4)],
-     ["F1 macro", d.metrics.macro_f1.toFixed(4), c.metrics.macro_f1.toFixed(4)],
-     ["Errores (de 10 000)", fmtInt(10000 * (1 - d.metrics.accuracy)), fmtInt(10000 * (1 - c.metrics.accuracy))],
-     ["Parámetros", fmtInt(d.parameters), fmtInt(c.parameters)],
-     ["Tiempo de entrenamiento (CPU)", Math.round(d.config.training_seconds) + " s", Math.round(c.config.training_seconds) + " s"],
-     ["Épocas / lote", d.config.epochs + " / " + d.config.batch_size, c.config.epochs + " / " + c.config.batch_size]
-    ].map(function (r) { return "<tr><td>" + r.join("</td><td>") + "</td></tr>"; }).join("") + "</table>";
+  function row(label, fn) { return "<tr><td>" + label + "</td><td>" + ms.map(fn).join("</td><td>") + "</td></tr>"; }
+  $("compareTable").innerHTML = "<table><tr><th>Métrica</th><th>" + KINDS.map(function (k) { return NAMES[k]; }).join("</th><th>") + "</th></tr>" +
+    row("Exactitud en prueba", function (m) { return fmtPct(m.metrics.accuracy); }) +
+    row("Pérdida en prueba", function (m) { return m.metrics.loss.toFixed(4); }) +
+    row("F1 macro", function (m) { return m.metrics.macro_f1.toFixed(4); }) +
+    row("Errores (de 10 000)", function (m) { return fmtInt(10000 * (1 - m.metrics.accuracy)); }) +
+    row("Parámetros", function (m) { return fmtInt(m.parameters); }) +
+    row("Tiempo de entrenamiento (CPU)", function (m) { return Math.round(m.config.training_seconds) + " s"; }) +
+    row("Épocas / lote", function (m) { return m.config.epochs + " / " + m.config.batch_size; }) + "</table>";
 
-  var conv1 = MODELS.cnn.filter(function (l) { return l.type === "Conv2D"; })[0];
-  var kmin = Infinity, kmax = -Infinity;
-  for (var i = 0; i < conv1.kernelData.length; i++) { kmin = Math.min(kmin, conv1.kernelData[i]); kmax = Math.max(kmax, conv1.kernelData[i]); }
-  for (var f = 0; f < 16; f++) {
-    var w9 = new Float32Array(9);
-    for (var j = 0; j < 9; j++) w9[j] = (conv1.kernelData[j * 32 + f] - kmin) / (kmax - kmin);
-    $("filters").appendChild(thumb(w9, 3, 3, 1, "filtro " + (f + 1), 54));
+  /* ------------------------------------------------ filters: 32 per convolutional layer */
+  var SHOW = 32;
+  function convLayers(kind) { return MODELS[kind].filter(function (l) { return l.type === "Conv2D"; }); }
+  function grid(items) {
+    var g = document.createElement("div"); g.className = "filter-grid";
+    items.forEach(function (it) { g.appendChild(thumb(it.data, it.w, it.h, 1, it.caption)); });
+    return g;
+  }
+  function layerTitle(text) { var el = document.createElement("p"); el.innerHTML = text; return el; }
+
+  CONV_KINDS.forEach(function (kind) {
+    var host = document.querySelector("[data-viz='" + kind + "']");
+    host.innerHTML = "<h3>Los 32 filtros de cada capa convolucional (pesos aprendidos)</h3>" +
+      "<p class='muted'>Cada cuadro es un filtro 3×3: claro = peso positivo, oscuro = peso negativo (escala común dentro de cada capa). " +
+      "En la primera capa cada filtro mira la imagen directamente. En la segunda, cada filtro tiene un 3×3 por cada uno de los 32 mapas de entrada: " +
+      "se muestra el del mapa 0 (<code>W[:, :, 0, k]</code>, igual que en el notebook) para los primeros 32 de sus 64 filtros. " +
+      "Son pesos aprendidos, no etiquetas con significado humano.</p>";
+    convLayers(kind).forEach(function (layer, n) {
+      var kh = layer.kernel_shape[0], kw = layer.kernel_shape[1], cin = layer.kernel_shape[2], cout = layer.kernel_shape[3];
+      var count = Math.min(SHOW, cout), items = [], lo = Infinity, hi = -Infinity, f, j, v;
+      // Keras kernel layout [kh, kw, cin, cout]: element (u, v, 0, f) sits at (u*kw + v)*cin*cout + f.
+      for (f = 0; f < count; f++) for (j = 0; j < kh * kw; j++) {
+        v = layer.kernelData[j * cin * cout + f]; if (v < lo) lo = v; if (v > hi) hi = v;
+      }
+      for (f = 0; f < count; f++) {
+        var w = new Float32Array(kh * kw);
+        for (j = 0; j < kh * kw; j++) w[j] = (layer.kernelData[j * cin * cout + f] - lo) / (hi - lo || 1);
+        items.push({ data: w, w: kw, h: kh, caption: String(f + 1) });
+      }
+      host.appendChild(layerTitle("<b>Capa " + (n + 1) + ": " + layer.name + "</b> <span class='muted'>(" + kh + "×" + kw + ", " + cin + " → " + cout +
+        " canales" + (layer.padding === "same" ? ", padding same" : "") + "; se muestran " + count + ")</span>"));
+      host.appendChild(grid(items));
+    });
+    var mapsIntro = document.createElement("div");
+    mapsIntro.innerHTML = "<h3>Mapas de activación de tu dígito (32 por capa)</h3><p class='muted'>Salida de cada filtro sobre tu dígito, después de ReLU: " +
+      "las zonas claras indican dónde el filtro encontró su patrón. Cada mapa usa su propia escala.</p>";
+    host.appendChild(mapsIntro);
+    var maps = document.createElement("div"); maps.id = "maps-" + kind;
+    maps.innerHTML = "<span class='muted'>Dibuja, captura o carga un dígito.</span>";
+    host.appendChild(maps);
+  });
+
+  function renderMaps(kind, activations) {
+    var host = $("maps-" + kind); host.innerHTML = "";
+    convLayers(kind).forEach(function (layer, n) {
+      var act = activations[layer.name], items = [], count = Math.min(SHOW, act.c);
+      for (var ch = 0; ch < count; ch++) {
+        var map = new Float32Array(act.h * act.w), mx = 1e-8;
+        for (var p = 0; p < map.length; p++) { map[p] = act.data[p * act.c + ch]; if (map[p] > mx) mx = map[p]; }
+        for (p = 0; p < map.length; p++) map[p] /= mx;
+        items.push({ data: map, w: act.w, h: act.h, caption: String(ch + 1) });
+      }
+      host.appendChild(layerTitle("<b>Capa " + (n + 1) + ": " + layer.name + "</b> <span class='muted'>(mapas " + act.h + "×" + act.w + ", " + count + " de " + act.c + ")</span>"));
+      host.appendChild(grid(items));
+    });
   }
 
   /* ------------------------------------------------ tabs */
@@ -389,7 +459,7 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
     });
   }
   wireTabs("mainTabs", "data-tab", function (tab) {
-    ["polarity", "dense", "cnn", "compare"].forEach(function (t) { $("tab-" + t).hidden = t !== tab; });
+    ["polarity", "dense", "cnn", "cnn_pool", "compare"].forEach(function (t) { $("tab-" + t).hidden = t !== tab; });
   });
   var currentSource = "draw";
   wireTabs("sourceTabs", "data-source", function (src) {
@@ -421,8 +491,8 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
     paintGray($("final"), new Float32Array(784), 28, 28, 1);
     $("steps").hidden = true; $("stepsEmpty").hidden = false; $("finalPixelsBox").hidden = true; $("flatWrap").hidden = true;
     $("polarityNote").textContent = "";
-    ["pred-dense", "pred-cnn", "cmp-dense", "cmp-cnn"].forEach(function (id) { $(id).innerHTML = message; $(id).className = "muted"; });
-    $("maps").innerHTML = "<span class='muted'>" + message + "</span>";
+    KINDS.forEach(function (k) { ["pred-", "cmp-"].forEach(function (pre) { $(pre + k).innerHTML = message; $(pre + k).className = "muted"; }); });
+    CONV_KINDS.forEach(function (k) { $("maps-" + k).innerHTML = "<span class='muted'>" + message + "</span>"; });
   }
 
   function run(gray, opts) {
@@ -450,21 +520,15 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
     paintGray($("flat"), img, 784, 1, 1); $("flatWrap").hidden = false;
 
     var out = {};
-    ["dense", "cnn"].forEach(function (kind) {
+    KINDS.forEach(function (kind) {
       out[kind] = Core.predict(MODELS[kind], img);
       var html = bars(out[kind].probabilities);
       $("pred-" + kind).innerHTML = html; $("pred-" + kind).className = "";
       $("cmp-" + kind).innerHTML = html; $("cmp-" + kind).className = "";
     });
-    var act = out.cnn.activations.conv_32 || out.cnn.activations[Object.keys(out.cnn.activations)[0]];
-    $("maps").innerHTML = "";
-    for (var ch = 0; ch < 8; ch++) {
-      var map = new Float32Array(act.h * act.w), mx = 1e-8;
-      for (var p = 0; p < map.length; p++) { map[p] = act.data[p * act.c + ch]; if (map[p] > mx) mx = map[p]; }
-      for (p = 0; p < map.length; p++) map[p] /= mx;
-      $("maps").appendChild(thumb(map, act.w, act.h, 1, "mapa " + (ch + 1), 78));
-    }
-    setStatus("Densa: " + argmax(out.dense.probabilities) + " · CNN: " + argmax(out.cnn.probabilities) + (info.inverted ? " · colores invertidos" : ""));
+    CONV_KINDS.forEach(function (kind) { renderMaps(kind, out[kind].activations); });
+    setStatus("Densa: " + argmax(out.dense.probabilities) + " · CNN: " + argmax(out.cnn.probabilities) +
+      " · CNN pooling: " + argmax(out.cnn_pool.probabilities) + (info.inverted ? " · colores invertidos" : ""));
   }
   function argmax(p) { var b = 0; for (var k = 1; k < p.length; k++) if (p[k] > p[b]) b = k; return b; }
   $("polarity").addEventListener("change", function () { if (lastGray) run(lastGray.gray, lastGray.opts); });

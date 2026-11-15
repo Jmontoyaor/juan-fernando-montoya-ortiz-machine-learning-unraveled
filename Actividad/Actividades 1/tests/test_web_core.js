@@ -22,7 +22,7 @@ function bar(width, height, bg, fg) {
 
 test("JS forward pass matches Keras on real MNIST test images", () => {
   const images = core.decodeFloat32(data.verify_images);
-  for (const kind of ["dense", "cnn"]) {
+  for (const kind of Object.keys(data.models)) {
     const layers = core.loadModel(data.models[kind]);
     const expected = core.decodeFloat32(data.models[kind].verify_expected);
     let maxDiff = 0;

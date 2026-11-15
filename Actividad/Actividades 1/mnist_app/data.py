@@ -22,6 +22,6 @@ def load_mnist():
 def for_model(images, kind):
     if kind == "dense":
         return images.reshape((-1, 784)).astype(np.float32, copy=False)
-    if kind == "cnn":
+    if kind in ("cnn", "cnn_pool"):
         return images[..., np.newaxis].astype(np.float32, copy=False)
     raise ValueError(f"Unknown model kind: {kind}")

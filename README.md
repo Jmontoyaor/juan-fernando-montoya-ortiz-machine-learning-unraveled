@@ -72,7 +72,7 @@ machine-learning-unraveled/
 - **[`Parcial/Parcial 1/`](Parcial/Parcial%201/)**: Enunciado de Pearson & RKHS (`Parcial_1_TAM_2026_2_Pearson_RKHS.pdf`), justificación teórica (`Conceptos_Por_Que_Funciona_Parcial1_TAM.pdf`) y cuaderno con solución completa [`Solucion_Parcial_1_2026_2.ipynb`](Parcial/Parcial%201/Solucion_Parcial_1_2026_2.ipynb).
 
 ### 3. 🎯 [Actividad](Actividad/)
-- **[`Actividad/Actividades 1/`](Actividad/Actividades%201/)**: Clasificador de dígitos MNIST con las dos redes de referencia (densa y convolucional). Incluye una [versión web](https://jmontoyaor.github.io/juan-fernando-montoya-ortiz-machine-learning-unraveled/mnist/), una app local en localhost con entrenamiento y la versión original con OpenCV y osciloscopio.
+- **[`Actividad/Actividades 1/`](Actividad/Actividades%201/)**: Clasificador de dígitos MNIST con tres redes: densa, convolucional y convolucional con pooling. Incluye una [versión web](https://jmontoyaor.github.io/juan-fernando-montoya-ortiz-machine-learning-unraveled/mnist/), una app local en localhost con entrenamiento y la versión original con OpenCV y osciloscopio.
 - **[`Actividad/Actividades 2/`](Actividad/Actividades%202/)**: Espacio reservado para la segunda actividad práctica.
 
 ---

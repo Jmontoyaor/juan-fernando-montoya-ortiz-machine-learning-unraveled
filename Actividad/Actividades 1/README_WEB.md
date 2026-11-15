@@ -5,7 +5,7 @@
 | Forma | Qué hace | Cómo se abre |
 | --- | --- | --- |
 | **Página web** | Dibujar, usar la cámara o subir una imagen; ver la corrección a fondo negro y trazo blanco, las predicciones de ambas redes y todas las métricas. No instala nada. | <https://jmontoyaor.github.io/juan-fernando-montoya-ortiz-machine-learning-unraveled/mnist/> |
-| **App local (localhost)** | Lo mismo que la página web (sin cámara) y, además, **entrenar** las redes desde la interfaz. | Doble clic en `iniciar_app.bat` (Windows) o `./iniciar_app.sh` (Linux/macOS). Se abre <http://localhost:8501>. |
+| **App local (localhost)** | Red densa y CNN original con dibujo o imagen, y además **entrenar** desde la interfaz. La CNN con pooling se entrena por comando y se ve en la página web. | Doble clic en `iniciar_app.bat` (Windows) o `./iniciar_app.sh` (Linux/macOS). Se abre <http://localhost:8501>. |
 | **Versión original OpenCV** | Cámara en tiempo real con osciloscopio (`app_cam.py`, `train.py`). Se conserva sin cambios. | Ver [README.md](README.md). |
 
 > **¿Por qué el enlace de localhost no abre la app por sí solo?** `localhost` significa «este mismo equipo». El enlace solo funciona mientras el lanzador está corriendo en la PC de quien hace clic: GitHub no puede ejecutar programas en tu computador. La página web, en cambio, se ejecuta dentro de tu navegador: los pesos entrenados se descargan una vez y las operaciones de la red las hace JavaScript.
@@ -16,18 +16,20 @@ Entrenar las dos arquitecturas de `scratchpad.py` con los mismos datos, comparar
 
 ## Resultados reales (30 épocas, lote 32, semilla 42, CPU)
 
-| | Red densa | Red convolucional |
-| --- | ---: | ---: |
-| Exactitud en prueba | **97.67 %** | **98.63 %** |
-| Pérdida en prueba | 0.1646 | 0.1648 |
-| F1 macro | 0.9766 | 0.9862 |
-| Errores (de 10 000) | 233 | 137 |
-| Parámetros | 55 050 | 387 466 |
-| Tiempo de entrenamiento | 63 s | 627 s |
+| | Red densa | Red convolucional | CNN con pooling |
+| --- | ---: | ---: | ---: |
+| Exactitud en prueba | **97.67 %** | **98.63 %** | **99.01 %** |
+| Pérdida en prueba | 0.1646 | 0.1648 | 0.0695 |
+| F1 macro | 0.9766 | 0.9862 | 0.9900 |
+| Errores (de 10 000) | 233 | 137 | 99 |
+| Parámetros | 55 050 | 387 466 | 50 186 |
+| Tiempo de entrenamiento | 63 s | 627 s | 395 s |
 
 Datos: 54 000 imágenes para entrenar, 6 000 para validar (tomadas del entrenamiento) y 10 000 de prueba reservadas. Python 3.12.10, TensorFlow 2.21.0, Windows 11, solo CPU.
 
-**Cómo leerlos.** La CNN comete un 41 % menos de errores porque sus filtros aprovechan la vecindad entre píxeles. Las dos pérdidas de prueba son casi iguales aunque las exactitudes difieran: la pérdida castiga mucho los pocos errores cometidos con mucha confianza. En las curvas, la **pérdida de validación de la CNN sube desde la época 3** mientras la de entrenamiento llega casi a 0: es **sobreajuste**, esperable en una arquitectura sin pooling, sin dropout y con 368 650 parámetros en la última capa. La red densa muestra lo mismo, más suave: su pérdida de validación es mínima en la época 5. Treinta épocas es más de lo necesario; *early stopping*, pooling o dropout lo reducirían. Esas mejoras no se aplicaron para mantener la arquitectura de referencia.
+**Cómo leerlos.** La CNN comete un 41 % menos de errores porque sus filtros aprovechan la vecindad entre píxeles. Las dos pérdidas de prueba son casi iguales aunque las exactitudes difieran: la pérdida castiga mucho los pocos errores cometidos con mucha confianza. En las curvas, la **pérdida de validación de la CNN sube desde la época 3** mientras la de entrenamiento llega casi a 0: es **sobreajuste**, esperable en una arquitectura sin pooling, sin dropout y con 368 650 parámetros en la última capa. La red densa muestra lo mismo, más suave: su pérdida de validación es mínima en la época 5. Treinta épocas es más de lo necesario; *early stopping*, pooling o dropout lo reducirían. Esas mejoras no se aplicaron a la CNN original para mantener la arquitectura de referencia.
+
+**CNN con pooling (`scratchpad_3.ipynb`).** Es la versión actualizada de la clase y la mejor de las tres: 99.01 % con 50 186 parámetros, casi 8 veces menos que la CNN sin pooling. El MaxPooling reduce los mapas de 28×28 a 7×7 antes de la capa final, así que esa capa pasa de 368 650 a 31 370 parámetros y la red generaliza mejor: su pérdida de prueba es menos de la mitad (0.0695 frente a 0.1648). También sobreajusta, aunque mucho menos: su pérdida de validación es mínima en la época 3 (0.066) y termina en 0.101.
 
 ## Instalación y ejecución
 
@@ -66,6 +68,7 @@ El servidor solo escucha en `127.0.0.1`: no queda expuesto a la red ni a Interne
 $py = "$HOME\.venvs\mnist-a1\Scripts\python.exe"
 & $py train_mnist.py --kind dense --epochs 30 --batch-size 32 --seed 42   # ~1 min
 & $py train_mnist.py --kind cnn   --epochs 30 --batch-size 32 --seed 42   # ~10 min
+& $py train_mnist.py --kind cnn_pool --epochs 30 --batch-size 32 --seed 42  # ~7 min
 & $py export_web.py                                                         # actualiza docs/mnist/
 ```
 
@@ -100,18 +103,23 @@ docs/mnist/                 # página web estática (GitHub Pages)
 └── model_data.js           # pesos exportados (generado)
 ```
 
-## Arquitecturas (fieles a `scratchpad.py`)
+## Arquitecturas (fieles a `scratchpad.py` y `scratchpad_3.ipynb`)
 
 | Red | Arquitectura | Parámetros |
 | --- | --- | ---: |
 | Densa | `Input(784) → Dense(64, relu) → Dense(64, relu) → Dense(10, softmax)` | 55 050 |
 | CNN | `Input(28,28,1) → Conv2D(32, 3×3, relu) → Conv2D(64, 3×3, relu) → Flatten → Dense(10, softmax)` | 387 466 |
+| CNN con pooling | `Input(28,28,1) → Conv2D(32, 3×3, same, relu) → MaxPool(2×2) → Conv2D(64, 3×3, same, relu) → MaxPool(2×2) → Flatten → Dense(10, softmax)` | 50 186 |
 
-Ambas usan Adam y `sparse_categorical_crossentropy`. La versión OpenCV original (`train.py`) usa una CNN distinta, con MaxPooling y una Dense(64) extra. Se conserva como variante histórica, pero no es la de referencia.
+Las tres usan Adam y `sparse_categorical_crossentropy`, y se entrenaron con la misma partición y la misma normalización (el notebook original entrena con píxeles de 0 a 255 y sin validación; aquí se normalizan a [0, 1] para que las tres sean comparables). La versión OpenCV original (`train.py`) usa una CNN distinta, con MaxPooling y una Dense(64) extra. Se conserva como variante histórica, pero no es la de referencia.
 
 **Red densa.** Aplana la imagen en 784 números; cada neurona combina todos los píxeles: $h = \max(0, Wx + b)$. Conteo: $784·64+64 + 64·64+64 + 64·10+10 = 55\,050$.
 
 **CNN.** Cada filtro 3×3 se desliza por la imagen y produce un mapa de características: $y_{i,j} = \mathrm{ReLU}\left(\sum_{u,v} w_{u,v}\,x_{i+u,j+v} + b\right)$. Sin padding, cada convolución reduce 2 píxeles (28 → 26 → 24). Conteo: $(9·1·32+32) + (9·32·64+64) + (24·24·64·10+10) = 387\,466$; el 95 % está en la última capa.
+
+**CNN con pooling.** Con `padding="same"` se rellena con ceros el borde para que la convolución conserve el tamaño, y `MaxPooling 2×2` toma el máximo de cada bloque de 2×2: $\text{pool}_{i,j} = \max(y_{2i,2j}, y_{2i,2j+1}, y_{2i+1,2j}, y_{2i+1,2j+1})$. Tamaños: 28 → 28 → 14 → 14 → 7. Conteo: $(9·1·32+32) + (9·32·64+64) + (7·7·64·10+10) = 50\,186$.
+
+**Filtros y mapas en la página.** Las pestañas de las dos CNN muestran, por cada capa convolucional, una grilla de 32 subplots con los pesos de los filtros y otra con los 32 mapas de activación de tu dígito. En la segunda capa cada filtro tiene un 3×3 por cada mapa de entrada; se dibuja el del mapa 0 (`W[:, :, 0, k]`), igual que en el notebook.
 
 **Salida.** Softmax convierte los 10 puntajes en probabilidades: $p_k = e^{z_k}/\sum_j e^{z_j}$. La pérdida es $-\log p_{y}$, el logaritmo de la probabilidad asignada a la clase correcta.
 

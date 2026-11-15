@@ -18,6 +18,17 @@ def build_model(kind):
             tf.keras.layers.Flatten(name="flatten_features"),
             tf.keras.layers.Dense(10, activation="softmax", name="class_probabilities"),
         ], name="mnist_cnn_reference")
+    elif kind == "cnn_pool":
+        # Updated class architecture (scratchpad_3.ipynb): "same" padding + max pooling.
+        model = tf.keras.Sequential([
+            tf.keras.layers.Input(shape=(28, 28, 1), name="image_28x28"),
+            tf.keras.layers.Conv2D(32, (3, 3), padding="same", activation="relu", name="conv_32"),
+            tf.keras.layers.MaxPooling2D((2, 2), name="pool_1"),
+            tf.keras.layers.Conv2D(64, (3, 3), padding="same", activation="relu", name="conv_64"),
+            tf.keras.layers.MaxPooling2D((2, 2), name="pool_2"),
+            tf.keras.layers.Flatten(name="flatten_features"),
+            tf.keras.layers.Dense(10, activation="softmax", name="class_probabilities"),
+        ], name="mnist_cnn_pooling")
     else:
         raise ValueError(f"Unknown model kind: {kind}")
     model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])

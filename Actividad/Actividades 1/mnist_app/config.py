@@ -5,7 +5,7 @@ ARTIFACTS_DIR = ACTIVITY_DIR / "artifacts"
 DATA_DIR = ACTIVITY_DIR / "data"
 SEED = 42
 IMAGE_SHAPE = (28, 28)
-MODEL_FILES = {"dense": "mnist_dense.keras", "cnn": "mnist_cnn.keras"}
+MODEL_FILES = {"dense": "mnist_dense.keras", "cnn": "mnist_cnn.keras", "cnn_pool": "mnist_cnn_pool.keras"}
 PREPROCESSING = {
     "version": 1,
     "representation": "grayscale float32 [0,1], black background and white foreground",

@@ -180,26 +180,50 @@
     return y;
   }
 
-  /* Valid 3x3 convolution, channels-last (HWC), followed by ReLU. */
+  /* 2D convolution (stride 1, "valid" or "same" padding), channels-last (HWC), followed by ReLU. */
   function conv2d(input, h, w, cin, layer) {
     var kh = layer.kernel_shape[0], kw = layer.kernel_shape[1], cout = layer.kernel_shape[3];
-    var oh = h - kh + 1, ow = w - kw + 1, k = layer.kernelData, b = layer.biasData;
+    var same = layer.padding === "same";
+    var pt = same ? Math.floor((kh - 1) / 2) : 0, pl = same ? Math.floor((kw - 1) / 2) : 0;
+    var oh = same ? h : h - kh + 1, ow = same ? w : w - kw + 1, k = layer.kernelData, b = layer.biasData;
     var out = new Float32Array(oh * ow * cout);
     for (var y = 0; y < oh; y++) for (var x = 0; x < ow; x++) {
       var base = (y * ow + x) * cout;
       for (var co = 0; co < cout; co++) out[base + co] = b[co];
-      for (var u = 0; u < kh; u++) for (var v = 0; v < kw; v++) {
-        var inBase = ((y + u) * w + (x + v)) * cin, kBase = (u * kw + v) * cin;
-        for (var ci = 0; ci < cin; ci++) {
-          var xv = input[inBase + ci];
-          if (xv === 0) continue;
-          var kOff = (kBase + ci) * cout;
-          for (co = 0; co < cout; co++) out[base + co] += xv * k[kOff + co];
+      for (var u = 0; u < kh; u++) {
+        var iy = y + u - pt;
+        if (iy < 0 || iy >= h) continue;
+        for (var v = 0; v < kw; v++) {
+          var ix = x + v - pl;
+          if (ix < 0 || ix >= w) continue;
+          var inBase = (iy * w + ix) * cin, kBase = (u * kw + v) * cin;
+          for (var ci = 0; ci < cin; ci++) {
+            var xv = input[inBase + ci];
+            if (xv === 0) continue;
+            var kOff = (kBase + ci) * cout;
+            for (co = 0; co < cout; co++) out[base + co] += xv * k[kOff + co];
+          }
         }
       }
       for (co = 0; co < cout; co++) if (out[base + co] < 0) out[base + co] = 0;
     }
     return { data: out, h: oh, w: ow, c: cout };
+  }
+
+  /* Max pooling with "valid" padding, channels-last (HWC). */
+  function maxPool(input, h, w, c, layer) {
+    var ph = layer.pool_size[0], pw = layer.pool_size[1], sh = layer.strides[0], sw = layer.strides[1];
+    var oh = Math.floor((h - ph) / sh) + 1, ow = Math.floor((w - pw) / sw) + 1;
+    var out = new Float32Array(oh * ow * c);
+    for (var y = 0; y < oh; y++) for (var x = 0; x < ow; x++) for (var ch = 0; ch < c; ch++) {
+      var m = -Infinity;
+      for (var u = 0; u < ph; u++) for (var v = 0; v < pw; v++) {
+        var val = input[((y * sh + u) * w + (x * sw + v)) * c + ch];
+        if (val > m) m = val;
+      }
+      out[(y * ow + x) * c + ch] = m;
+    }
+    return { data: out, h: oh, w: ow, c: c };
   }
 
   function softmax(z) {
@@ -220,6 +244,9 @@
         var r = conv2d(x, shape[0], shape[1], shape[2], layer);
         x = r.data; shape = [r.h, r.w, r.c];
         activations[layer.name] = r;
+      } else if (layer.type === "MaxPooling2D") {
+        var pr = maxPool(x, shape[0], shape[1], shape[2], layer);
+        x = pr.data; shape = [pr.h, pr.w, pr.c];
       } else if (layer.type === "Flatten") {
         shape = [x.length];
       } else if (layer.type === "Dense") {

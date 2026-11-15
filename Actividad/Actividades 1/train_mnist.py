@@ -5,7 +5,7 @@ from mnist_app.training import train
 
 def main():
     parser = argparse.ArgumentParser(description="Train one reference MNIST model.")
-    parser.add_argument("--kind", choices=("dense", "cnn"), required=True)
+    parser.add_argument("--kind", choices=("dense", "cnn", "cnn_pool"), required=True)
     parser.add_argument("--epochs", type=int, default=30)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--seed", type=int, default=42)
