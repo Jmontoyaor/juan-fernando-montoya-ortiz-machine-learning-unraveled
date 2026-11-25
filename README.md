@@ -14,9 +14,10 @@ Permite explorar visualmente los grafos de dependencias entre demostraciones, ej
 
 ---
 
-## 🔢 Actividad 1: MNIST, red densa vs. red convolucional
+## 🔢 Actividad 1: redes densas, convolucionales, regresión y series de tiempo
 
 - **Abrir en el navegador (sin instalar nada):** [jmontoyaor.github.io/juan-fernando-montoya-ortiz-machine-learning-unraveled/mnist/](https://jmontoyaor.github.io/juan-fernando-montoya-ortiz-machine-learning-unraveled/mnist/) — dibuja, usa la cámara o sube una imagen; muestra la corrección a fondo negro y trazo blanco, y las predicciones de ambas redes.
+- **Regresión y series de tiempo (sin instalar nada):** [senales.html](https://jmontoyaor.github.io/juan-fernando-montoya-ortiz-machine-learning-unraveled/mnist/senales.html) — regresión de una recta y un coseno, y comparación justa de RNN, LSTM y GRU (con DNN de referencia) en predicción directa y autorregresiva.
 - **App local con entrenamiento (localhost):** ejecuta [`Actividad/Actividades 1/iniciar_app.bat`](Actividad/Actividades%201/iniciar_app.bat) en Windows o `iniciar_app.sh` en Linux/macOS, y se abrirá [http://localhost:8501](http://localhost:8501). Ese enlace solo funciona mientras el lanzador está corriendo en tu equipo.
 - **Documentación:** [`Actividad/Actividades 1/README_WEB.md`](Actividad/Actividades%201/README_WEB.md).
 

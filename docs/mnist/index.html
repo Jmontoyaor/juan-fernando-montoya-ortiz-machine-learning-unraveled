@@ -24,6 +24,9 @@ body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.55 sys
 header { padding: 20px 16px 8px; max-width: 1280px; margin: 0 auto; }
 header h1 { margin: 0 0 4px; font-size: 1.5rem; }
 header p { margin: 0; color: var(--muted); }
+.sitenav { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+.sitenav a { text-decoration: none; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); color: var(--text); background: var(--panel); font-size: .9rem; }
+.sitenav a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: #fff; }
 a { color: var(--accent); }
 main { max-width: 1280px; margin: 0 auto; padding: 8px 16px 40px; display: grid; grid-template-columns: 320px 1fr; gap: 20px; align-items: start; }
 @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
@@ -106,6 +109,10 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
   <h1>MNIST: red densa y red convolucional</h1>
   <p>Actividad 1 · Red densa, CNN (<code>scratchpad.py</code>) y CNN con pooling (<code>scratchpad_3.ipynb</code>), entrenadas en Python y ejecutadas aquí en tu navegador.
      <a href="https://github.com/Jmontoyaor/juan-fernando-montoya-ortiz-machine-learning-unraveled/tree/main/Actividad/Actividades%201">Código en GitHub</a></p>
+  <nav class="sitenav" aria-label="Secciones">
+    <a href="index.html" aria-current="page">Clasificación MNIST: densa y convolucional</a>
+    <a href="senales.html">Regresión y series de tiempo</a>
+  </nav>
 </header>
 <main>
   <aside class="panel" aria-label="Dígito de entrada">

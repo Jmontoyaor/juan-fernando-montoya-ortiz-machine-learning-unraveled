@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Regresión y series</title>
+<link rel="icon" href="data:,">
+<meta name="description" content="Regresión y series de tiempo: comparación justa de RNN, LSTM y GRU, ejecutadas en el navegador.">
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --text: #1d2330; --muted: #5b6577; --line: #dde1e8;
+  --accent: #2557d6; --accent-soft: #e6edff; --warn-bg: #fff6e0; --warn: #7a5300;
+  --real: #1d2330; --truth: #8a94a6; --pred: #c2410c; --dot: #2557d6; --span: rgba(37, 87, 214, .08);
+  --DNN: #1f77b4; --RNN: #ff7f0e; --LSTM: #2ca02c; --GRU: #d62728;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11141a; --panel: #1a1f28; --text: #e6e9ef; --muted: #9aa4b5; --line: #2c3340;
+    --accent: #7ea2ff; --accent-soft: #1f2a44; --warn-bg: #3a2e12; --warn: #f5cf7a;
+    --real: #e6e9ef; --truth: #7c8799; --pred: #fb923c; --dot: #7ea2ff; --span: rgba(126, 162, 255, .10);
+    --DNN: #60a5fa; --RNN: #fdba74; --LSTM: #4ade80; --GRU: #f87171;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { padding: 20px 16px 8px; max-width: 1200px; margin: 0 auto; }
+header h1 { margin: 0 0 4px; font-size: 1.5rem; }
+header p { margin: 0; color: var(--muted); }
+a { color: var(--accent); }
+.sitenav { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+.sitenav a { text-decoration: none; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); color: var(--text); background: var(--panel); font-size: .9rem; }
+.sitenav a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+main { max-width: 1200px; margin: 0 auto; padding: 8px 16px 40px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+h2 { font-size: 1.2rem; margin: 0 0 8px; }
+h3 { font-size: 1.02rem; margin: 22px 0 8px; }
+.muted { color: var(--muted); font-size: .9rem; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 16px; overflow-x: auto; }
+.tabs button { border: 0; background: none; color: var(--muted); padding: 10px 12px; cursor: pointer; font: inherit; border-bottom: 2px solid transparent; white-space: nowrap; }
+.tabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+section[hidden] { display: none; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.two > * { min-width: 0; }
+@media (max-width: 850px) { .two { grid-template-columns: 1fr; } }
+.card { border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin: 10px 0; }
+.kpi { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.kpi b { display: block; font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.kpi span { color: var(--muted); font-size: .8rem; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: .88rem; }
+th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: right; }
+th:first-child, td:first-child { text-align: left; }
+.table-wrap { overflow-x: auto; }
+.best { font-weight: 700; color: var(--accent); }
+.chart { width: 100%; height: auto; display: block; }
+.chart text { fill: var(--muted); font-size: 11px; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: .82rem; color: var(--muted); margin-top: 4px; }
+.legend i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 5px; }
+.legend i.dot { width: 7px; height: 7px; border-radius: 50%; }
+.formula { font-family: Georgia, "Times New Roman", serif; font-size: 1.02rem; background: var(--bg); padding: 6px 10px; border-radius: 8px; display: inline-block; }
+pre, code { font-family: ui-monospace, Consolas, monospace; background: var(--bg); border-radius: 6px; }
+pre { padding: 10px; overflow-x: auto; margin: 8px 0; }
+code { padding: 1px 4px; }
+.note { background: var(--warn-bg); color: var(--warn); padding: 10px 12px; border-radius: 8px; font-size: .9rem; }
+.controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
+.controls label { font-size: .9rem; }
+input[type="range"] { width: min(420px, 100%); }
+.btn { border: 1px solid var(--accent); background: var(--accent); color: #fff; padding: 7px 14px; border-radius: 8px; cursor: pointer; font: inherit; }
+.btn[disabled] { opacity: .6; cursor: progress; }
+.readout { font-variant-numeric: tabular-nums; font-size: .92rem; }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Regresión y series de tiempo</h1>
+  <p>Modelos de <code>scratchpad_General.ipynb</code>, entrenados en Python y ejecutados aquí en tu navegador.
+     <a href="https://github.com/Jmontoyaor/juan-fernando-montoya-ortiz-machine-learning-unraveled/tree/main/Actividad/Actividades%201">Código en GitHub</a></p>
+  <nav class="sitenav" aria-label="Secciones">
+    <a href="index.html">Clasificación MNIST: densa y convolucional</a>
+    <a href="senales.html" aria-current="page">Regresión y series de tiempo</a>
+  </nav>
+</header>
+<main>
+  <div class="panel">
+    <nav class="tabs" role="tablist" id="tabs">
+      <button role="tab" data-tab="reg" aria-selected="true">Regresión</button>
+      <button role="tab" data-tab="ts" aria-selected="false">Series de tiempo: RNN vs LSTM vs GRU</button>
+    </nav>
+
+    <!-- ===================================================== REGRESSION -->
+    <section id="tab-reg">
+      <h2>Regresión: predecir un número, no una clase</h2>
+      <p>En MNIST la red elige una de 10 clases. En <b>regresión</b> la salida es un número continuo: una sola neurona sin activación al final. El error se mide con la distancia entre el valor real y el predicho:</p>
+      <p><span class="formula">MSE = (1/n) Σ (y<sub>i</sub> − ŷ<sub>i</sub>)²</span> &nbsp; <span class="formula">MAE = (1/n) Σ |y<sub>i</sub> − ŷ<sub>i</sub>|</span></p>
+      <p class="muted">Ambos ejemplos usan una partición aleatoria 80/20 (<code>random_state=42</code>), Adam y pérdida MSE, como en el notebook. Los puntos azules son datos de prueba que la red no vio al entrenar. La franja sombreada es el rango de entrenamiento: fuera de ella la red <b>extrapola</b>.</p>
+      <div class="two">
+        <div class="card" id="reg-line"></div>
+        <div class="card" id="reg-cosine"></div>
+      </div>
+      <p class="note">Fuera del rango de entrenamiento, la red del coseno deja de oscilar: con ReLU la salida se vuelve una recta, porque la red nunca vio esa zona. Una red neuronal <b>interpola</b> bien dentro de sus datos, pero no «descubre» la fórmula. La recta sí extrapola, porque su modelo, <code>y = m·x + b</code>, tiene la misma forma que la función real.</p>
+    </section>
+
+    <!-- ===================================================== TIME SERIES -->
+    <section id="tab-ts" hidden>
+      <h2>Series de tiempo: comparación justa de RNN, LSTM y GRU</h2>
+      <p>La red mira las últimas <b>1000 muestras</b> de la señal y predice las <b>200 siguientes</b>. Las tres redes recurrentes leen la ventana paso a paso y van guardando un estado interno (memoria). La <b>DNN</b> es la referencia: recibe las 1000 muestras de una sola vez, sin memoria temporal.</p>
+      <div id="ts-missing" class="note" hidden>Los modelos de series de tiempo todavía no se han exportado.</div>
+      <div id="ts-body">
+        <h3>La señal: un sensor sintético</h3>
+        <p class="muted"><span class="formula">s(t) = 20 + 0.000025·t + 0.6·sen(2πt/2400) + 0.15·sen(2πt/450) + ruido</span> &nbsp; 40 000 muestras: nivel, tendencia, un ciclo lento, uno rápido y ruido gaussiano (σ = 0.025).</p>
+        <div id="ts-overview"></div>
+        <h3>Condiciones iguales para todas (comparación justa)</h3>
+        <div class="table-wrap" id="ts-fair"></div>
+        <h3>Las cuatro arquitecturas</h3>
+        <div class="table-wrap" id="ts-arch"></div>
+        <p class="muted">Recurrencias: RNN simple <span class="formula">h<sub>t</sub> = tanh(W x<sub>t</sub> + U h<sub>t−1</sub> + b)</span>. La <b>LSTM</b> agrega una celda de memoria con compuertas de entrada, olvido y salida, que deciden qué guardar y qué descartar. La <b>GRU</b> simplifica la LSTM a dos compuertas (actualización y reinicio), con menos parámetros.</p>
+
+        <h3>Pruébalo: elige dónde empieza la predicción</h3>
+        <div class="controls">
+          <label for="start">Inicio dentro del conjunto de prueba: <b id="startLabel">0</b></label>
+          <input type="range" id="start" min="0" max="0" step="50" value="0">
+          <button class="btn" id="run">Predecir con las 4 redes</button>
+          <span class="muted" id="runStatus"></span>
+        </div>
+        <div class="two">
+          <div><b>Predicción directa: 200 muestras</b><div id="ts-direct"></div></div>
+          <div><b>Predicción autorregresiva: 2000 muestras (10 pasos de 200)</b><div id="ts-auto"></div></div>
+        </div>
+        <div class="table-wrap" id="ts-live"></div>
+        <p class="muted"><b>Autorregresiva:</b> la red predice 200 muestras, las agrega al final de su ventana, descarta las 200 más antiguas y vuelve a predecir. Así sus propios errores se convierten en su entrada, y el error se acumula.</p>
+
+        <h3>Resultados del entrenamiento</h3>
+        <div class="table-wrap" id="ts-results"></div>
+        <div id="ts-loss"></div>
+        <div id="ts-reading"></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script src="signals_data.js"></script>
+<script src="signals_core.js"></script>
+<script>
+(function () {
+  "use strict";
+  var D = window.SIGNALS_DATA, C = window.SignalsCore;
+  var $ = function (id) { return document.getElementById(id); };
+  var css = function (n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); };
+  var fmt = function (v, d) { return Number(v).toFixed(d == null ? 4 : d); };
+  var fmtSci = function (v) { return v < 1e-3 ? Number(v).toExponential(2) : Number(v).toFixed(4); };
+  var KINDS = ["DNN", "RNN", "LSTM", "GRU"], RECURRENT = ["RNN", "LSTM", "GRU"];
+
+  /* ------------------------------------------------------------ tabs */
+  var tabButtons = $("tabs").querySelectorAll("button");
+  tabButtons.forEach(function (b) {
+    b.addEventListener("click", function () {
+      tabButtons.forEach(function (o) { o.setAttribute("aria-selected", o === b ? "true" : "false"); });
+      ["reg", "ts"].forEach(function (t) { $("tab-" + t).hidden = t !== b.dataset.tab; });
+    });
+  });
+  if (location.hash === "#series") tabButtons[1].click();
+
+  /* ------------------------------------------------------------ SVG chart
+     opts: { width, height, series: [{x, y, color, dash, width, dots}], spans: [{from, to}],
+             vlines: [x], logY, xLabel, yLabel, xDomain } */
+  function chart(opts) {
+    var W = opts.width || 560, H = opts.height || 260, P = { l: 52, r: 12, t: 10, b: 30 };
+    var xs = [], ys = [];
+    opts.series.forEach(function (s) { for (var i = 0; i < s.x.length; i++) { xs.push(s.x[i]); ys.push(opts.logY ? Math.log10(Math.max(s.y[i], 1e-12)) : s.y[i]); } });
+    var x0 = opts.xDomain ? opts.xDomain[0] : Math.min.apply(null, xs), x1 = opts.xDomain ? opts.xDomain[1] : Math.max.apply(null, xs);
+    var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys), pad = (y1 - y0) * 0.06 || 1;
+    y0 -= pad; y1 += pad;
+    var sx = function (v) { return P.l + (v - x0) * (W - P.l - P.r) / ((x1 - x0) || 1); };
+    var sy = function (v) { return P.t + (y1 - v) * (H - P.t - P.b) / ((y1 - y0) || 1); };
+    var svg = "<svg class='chart' viewBox='0 0 " + W + " " + H + "' role='img' aria-label='" + (opts.label || "gráfica") + "'>";
+    (opts.spans || []).forEach(function (s) {
+      svg += "<rect x='" + sx(s.from) + "' y='" + P.t + "' width='" + Math.max(0, sx(s.to) - sx(s.from)) + "' height='" + (H - P.t - P.b) + "' fill='" + (s.color || css("--span")) + "'/>";
+      if (s.text) svg += "<text x='" + (sx(s.from) + 4) + "' y='" + (P.t + 12) + "'>" + s.text + "</text>";
+    });
+    for (var k = 0; k <= 4; k++) {
+      var v = y0 + k * (y1 - y0) / 4, yy = sy(v), lab = opts.logY ? "1e" + v.toFixed(1) : (Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(2));
+      svg += "<line x1='" + P.l + "' x2='" + (W - P.r) + "' y1='" + yy + "' y2='" + yy + "' stroke='" + css("--line") + "'/><text x='" + (P.l - 5) + "' y='" + (yy + 4) + "' text-anchor='end'>" + lab + "</text>";
+    }
+    for (k = 0; k <= 4; k++) {
+      var xv = x0 + k * (x1 - x0) / 4;
+      svg += "<text x='" + sx(xv) + "' y='" + (H - 10) + "' text-anchor='middle'>" + (Math.abs(xv) >= 100 ? Math.round(xv) : xv.toFixed(1)) + "</text>";
+    }
+    (opts.vlines || []).forEach(function (x) { svg += "<line x1='" + sx(x) + "' x2='" + sx(x) + "' y1='" + P.t + "' y2='" + (H - P.b) + "' stroke='" + css("--muted") + "' stroke-dasharray='3 3'/>"; });
+    opts.series.forEach(function (s) {
+      var Y = function (i) { return sy(opts.logY ? Math.log10(Math.max(s.y[i], 1e-12)) : s.y[i]); };
+      if (s.dots) {
+        for (var i = 0; i < s.x.length; i++) svg += "<circle cx='" + sx(s.x[i]).toFixed(1) + "' cy='" + Y(i).toFixed(1) + "' r='" + (s.r || 1.8) + "' fill='" + s.color + "' fill-opacity='.6'/>";
+      } else {
+        var d = "";
+        for (var j = 0; j < s.x.length; j++) d += (j ? "L" : "M") + sx(s.x[j]).toFixed(1) + "," + Y(j).toFixed(1);
+        svg += "<path d='" + d + "' fill='none' stroke='" + s.color + "' stroke-width='" + (s.width || 1.8) + "'" + (s.dash ? " stroke-dasharray='5 4'" : "") + " stroke-linejoin='round'/>";
+      }
+    });
+    svg += "</svg>";
+    var legend = opts.series.filter(function (s) { return s.name; }).map(function (s) {
+      return "<span><i class='" + (s.dots ? "dot" : "") + "' style='background:" + s.color + "'></i>" + s.name + "</span>";
+    }).join("");
+    return svg + (legend ? "<div class='legend'>" + legend + "</div>" : "");
+  }
+  function linspace(a, b, n) { var o = []; for (var i = 0; i < n; i++) o.push(a + (b - a) * i / (n - 1)); return o; }
+  function range(a, n) { var o = []; for (var i = 0; i < n; i++) o.push(a + i); return o; }
+
+  /* ------------------------------------------------------------ REGRESSION */
+  var REG = {
+    line: { title: "Recta: y = 3x + 1", f: function (x) { return 3 * x + 1; }, arch: "Input(1) → Dense(1)" },
+    cosine: { title: "Coseno: y = cos(2π·2·x)", f: function (x) { return Math.cos(2 * Math.PI * 2 * x); }, arch: "Input(1) → Dense(64, relu) ×3 → Dense(1)" }
+  };
+  Object.keys(REG).forEach(function (task) {
+    var r = D.regression[task], host = $("reg-" + task), spec = REG[task];
+    if (!r) { host.innerHTML = "<p class='muted'>Modelo no exportado.</p>"; return; }
+    var model = C.loadModel(r.layers);
+    var gx = linspace(r.extrapolate[0], r.extrapolate[1], 600);
+    var gy = gx.map(function (x) { return C.predict(model, Float32Array.of(x))[0]; });
+    var learned = r.learned ? "<p>La red aprendió <span class='formula'>y = " + fmt(r.learned.m) + "·x + " + fmt(r.learned.b) + "</span>: sus dos únicos pesos son la pendiente y el intercepto.</p>" : "";
+    host.innerHTML =
+      "<h3 style='margin-top:0'>" + spec.title + "</h3><pre>" + spec.arch + "</pre>" + learned +
+      "<div class='kpis'><div class='kpi'><b>" + fmtSci(r.test_mse) + "</b><span>MSE en prueba</span></div>" +
+      "<div class='kpi'><b>" + fmtSci(r.test_mae) + "</b><span>MAE en prueba</span></div>" +
+      "<div class='kpi'><b>" + r.parameters.toLocaleString("es-CO") + "</b><span>Parámetros</span></div>" +
+      "<div class='kpi'><b>" + r.epochs + "</b><span>Épocas</span></div></div>" +
+      chart({ label: spec.title, spans: [{ from: r.x_range[0], to: r.x_range[1], text: "rango de entrenamiento" }], series: [
+        { name: "Función real", x: gx, y: gx.map(spec.f), color: css("--truth"), dash: true, width: 1.5 },
+        { name: "Datos de prueba", x: r.test_points.x, y: r.test_points.y, color: css("--dot"), dots: true, r: task === "line" ? 1.4 : 1.6 },
+        { name: "Predicción de la red", x: gx, y: gy, color: css("--pred"), width: 2.2 }
+      ] }) +
+      "<div class='controls'><label>x = <b id='x-" + task + "'></b></label><input type='range' id='slider-" + task + "' min='" + r.extrapolate[0] +
+      "' max='" + r.extrapolate[1] + "' step='0.01' value='" + (r.x_range[0] + r.x_range[1]) / 2 + "'></div><div class='readout' id='read-" + task + "'></div>" +
+      "<h3>Curva de pérdida (MSE, escala log)</h3>" +
+      chart({ label: "pérdida", logY: true, height: 200, series: [
+        { name: "Entrenamiento", x: range(1, r.history.loss.length), y: r.history.loss, color: css("--pred") },
+        { name: "Prueba", x: range(1, r.history.val_loss.length), y: r.history.val_loss, color: css("--truth"), dash: true }
+      ] });
+    var slider = $("slider-" + task);
+    var update = function () {
+      var x = parseFloat(slider.value), yhat = C.predict(model, Float32Array.of(x))[0], y = spec.f(x);
+      var inside = x >= r.x_range[0] && x < r.x_range[1];
+      $("x-" + task).textContent = x.toFixed(2);
+      $("read-" + task).innerHTML = "Real: <b>" + y.toFixed(4) + "</b> · Red: <b>" + yhat.toFixed(4) + "</b> · Error: <b>" + Math.abs(y - yhat).toFixed(4) + "</b> · " +
+        (inside ? "dentro del rango de entrenamiento" : "<span style='color:var(--pred)'>fuera del rango: extrapolación</span>");
+    };
+    slider.addEventListener("input", update);
+    update();
+  });
+
+  /* ------------------------------------------------------------ TIME SERIES */
+  var T = D.timeseries;
+  if (!T) { $("ts-missing").hidden = false; $("ts-body").hidden = true; return; }
+  var cfg = T.config, w = cfg.window, p = cfg.horizon, steps = cfg.auto_steps;
+  var test = C.decodeFloat32(T.test_series), MODELS = {};
+  KINDS.forEach(function (k) { MODELS[k] = C.loadModel(T.models[k].layers); });
+  var norm = function (v) { return (v - T.mean) / T.std; }, denorm = function (v) { return v * T.std + T.mean; };
+
+  // Overview of the full signal with the chronological split.
+  var ov = C.decodeFloat32(T.overview.values), ovx = range(0, ov.length).map(function (i) { return i * T.overview.step; });
+  $("ts-overview").innerHTML = chart({ label: "serie completa", width: 1150, height: 260, series: [{ name: "Señal", x: ovx, y: Array.from(ov), color: css("--real"), width: 1 }],
+    spans: [{ from: 0, to: T.limits[0], text: "entrenamiento 70 %" }, { from: T.limits[0], to: T.limits[1], text: "val. 15 %", color: "rgba(255,127,14,.10)" },
+            { from: T.limits[1], to: cfg.n, text: "prueba", color: "rgba(44,160,44,.10)" }] });
+
+  $("ts-fair").innerHTML = "<table><tr><th>Condición</th><th>Valor (igual para las 4 redes)</th></tr>" + [
+    ["Datos", "La misma señal y las mismas ventanas: " + cfg.windows.train + " de entrenamiento, " + cfg.windows.val + " de validación, " + cfg.windows.test + " de prueba"],
+    ["División", "Cronológica 70 / 15 / 15: nunca se entrena con el futuro"],
+    ["Normalización", "z = (x − μ) / σ con μ y σ solo del entrenamiento (μ = " + fmt(T.mean, 3) + ", σ = " + fmt(T.std, 3) + ")"],
+    ["Ventana → horizonte", w + " muestras → " + p + " muestras, ventanas cada " + cfg.stride],
+    ["Unidades", cfg.units + " (neuronas ocultas o unidades recurrentes)"],
+    ["Optimización", "Adam, lr = " + cfg.learning_rate + ", MSE, lote " + cfg.batch_size + ", hasta " + cfg.epochs_max + " épocas, sin barajar"],
+    ["Callbacks", "EarlyStopping (paciencia 15, restaura los mejores pesos) y ReduceLROnPlateau (×0.5, paciencia 7)"],
+    ["Semilla", cfg.seed + ", reiniciada antes de construir cada red"]
+  ].map(function (r) { return "<tr><td>" + r[0] + "</td><td style='text-align:left'>" + r[1] + "</td></tr>"; }).join("") + "</table>";
+
+  var ARCH = { DNN: "Input(1000) → Dense(64, relu) → Dense(200)", RNN: "Input(1000, 1) → SimpleRNN(64) → Dense(200)",
+               LSTM: "Input(1000, 1) → LSTM(64) → Dense(200)", GRU: "Input(1000, 1) → GRU(64) → Dense(200)" };
+  $("ts-arch").innerHTML = "<table><tr><th>Red</th><th style='text-align:left'>Arquitectura</th><th>Parámetros</th><th>Papel</th></tr>" +
+    KINDS.map(function (k) {
+      return "<tr><td><span class='swatch' style='background:" + css("--" + k) + "'></span>" + k + "</td><td style='text-align:left'><code>" + ARCH[k] + "</code></td><td>" +
+        T.models[k].parameters.toLocaleString("es-CO") + "</td><td>" + (k === "DNN" ? "referencia" : "comparada") + "</td></tr>";
+    }).join("") + "</table>";
+
+  // Results from training (Python): best values highlighted among the three recurrent networks.
+  function bestOf(key) { return RECURRENT.reduce(function (a, b) { return T.models[a][key] <= T.models[b][key] ? a : b; }); }
+  var rows = [["Épocas ejecutadas (early stopping)", "epochs_run", function (v) { return v; }, false],
+              ["Tiempo de entrenamiento (CPU)", "training_seconds", function (v) { return Math.round(v) + " s"; }, true],
+              ["MSE en las " + cfg.windows.test + " ventanas de prueba (normalizado)", "test_windows_mse_norm", fmtSci, true],
+              ["MAE en ventanas de prueba (normalizado)", "test_windows_mae_norm", fmtSci, true],
+              ["MSE directo, 200 muestras (unidades reales)", "direct_mse", fmtSci, true],
+              ["MSE autorregresivo, 2000 muestras (unidades reales)", "auto_mse", fmtSci, true]];
+  $("ts-results").innerHTML = "<table><tr><th>Métrica</th>" + KINDS.map(function (k) { return "<th>" + k + (k === "DNN" ? " (ref.)" : "") + "</th>"; }).join("") + "</tr>" +
+    rows.map(function (r) {
+      var best = r[3] ? bestOf(r[1]) : null;
+      return "<tr><td>" + r[0] + "</td>" + KINDS.map(function (k) { return "<td" + (k === best ? " class='best'" : "") + ">" + r[2](T.models[k][r[1]]) + "</td>"; }).join("") + "</tr>";
+    }).join("") + "</table><p class='muted'>En azul, la mejor de las tres recurrentes en cada métrica. Directo y autorregresivo se miden desde el inicio del conjunto de prueba.</p>";
+
+  $("ts-loss").innerHTML = "<div class='two'>" +
+    ["loss", "val_loss"].map(function (key) {
+      return "<div><b>" + (key === "loss" ? "Error de entrenamiento" : "Error de validación") + " (MSE normalizado, escala log)</b>" +
+        chart({ label: key, logY: true, height: 230, series: KINDS.map(function (k) {
+          var h = T.models[k].history[key]; return { name: k, x: range(1, h.length), y: h, color: css("--" + k) };
+        }) }) + "</div>";
+    }).join("") + "</div>";
+
+  var rec = RECURRENT.slice().sort(function (a, b) { return T.models[a].test_windows_mse_norm - T.models[b].test_windows_mse_norm; });
+  var dnnErr = T.models.DNN.test_windows_mse_norm, bestErr = T.models[rec[0]].test_windows_mse_norm, ratio = bestErr / dnnErr;
+  $("ts-reading").innerHTML = "<h3>Cómo leer el resultado</h3><p>Entre las tres recurrentes, la de menor error en las ventanas de prueba es <b>" + rec[0] +
+    "</b> (MSE " + fmtSci(bestErr) + "), seguida de " + rec[1] + " (" + fmtSci(T.models[rec[1]].test_windows_mse_norm) + ") y " + rec[2] +
+    " (" + fmtSci(T.models[rec[2]].test_windows_mse_norm) + "). " +
+    (ratio > 1
+      ? "La <b>DNN</b> de referencia tiene un error " + (ratio >= 10 ? Math.round(ratio) : ratio.toFixed(1)) + " veces menor que la mejor recurrente. No es un fallo del experimento: " +
+        "la señal es casi periódica y la DNN ve las 1000 muestras a la vez, así que le basta una combinación casi lineal de ellas para «copiar» el patrón. " +
+        "Las recurrentes tienen que llevar esa información a través de 1000 pasos de memoria, donde el gradiente se debilita (desvanecimiento del gradiente). " +
+        "La LSTM y la GRU lo mitigan con sus compuertas, pero 1000 pasos siguen siendo una secuencia muy larga para 64 unidades. "
+      : "La mejor recurrente supera a la <b>DNN</b> de referencia: su memoria le permite aprovechar el orden temporal de la señal. ") +
+    "Comparación justa no significa resultados iguales: significa que las diferencias vienen de la arquitectura y no de los datos o del entrenamiento.</p>";
+
+  // Interactive forecast computed in the browser.
+  var maxStart = test.length - w - p * steps;
+  $("start").max = maxStart;
+  $("start").addEventListener("input", function () { $("startLabel").textContent = $("start").value; });
+  function run() {
+    var s = parseInt($("start").value, 10), btn = $("run");
+    btn.disabled = true; $("runStatus").textContent = "Calculando en tu navegador…";
+    setTimeout(function () {
+      var t0 = performance.now(), win = new Float32Array(w);
+      for (var i = 0; i < w; i++) win[i] = norm(test[s + i]);
+      var ctx = 300, xCtx = range(w - ctx, ctx), yCtx = Array.from(test.subarray(s + w - ctx, s + w));
+      var real = Array.from(test.subarray(s + w, s + w + p * steps));
+      var direct = [{ name: "Ventana de entrada", x: xCtx, y: yCtx, color: css("--real"), width: 1.4 },
+                    { name: "Señal real", x: range(w, p), y: real.slice(0, p), color: css("--truth"), width: 3 }];
+      var auto = [{ name: "Ventana de entrada", x: xCtx, y: yCtx, color: css("--real"), width: 1.4 },
+                  { name: "Señal real", x: range(w, p * steps), y: real, color: css("--truth"), width: 3 }];
+      var metrics = {};
+      KINDS.forEach(function (k) {
+        var d = Array.from(C.predict(MODELS[k], win), denorm), a = Array.from(C.autoregressive(MODELS[k], win, steps), denorm);
+        var mse = function (pred, n) { var e = 0; for (var j = 0; j < n; j++) e += Math.pow(pred[j] - real[j], 2); return e / n; };
+        metrics[k] = { d: mse(d, p), a: mse(a, p * steps) };
+        direct.push({ name: k, x: range(w, p), y: d, color: css("--" + k) });
+        auto.push({ name: k, x: range(w, p * steps), y: a, color: css("--" + k) });
+      });
+      $("ts-direct").innerHTML = chart({ label: "predicción directa", series: direct, vlines: [w] });
+      $("ts-auto").innerHTML = chart({ label: "predicción autorregresiva", series: auto, vlines: [w] });
+      var bd = RECURRENT.reduce(function (a, b) { return metrics[a].d <= metrics[b].d ? a : b; });
+      var ba = RECURRENT.reduce(function (a, b) { return metrics[a].a <= metrics[b].a ? a : b; });
+      $("ts-live").innerHTML = "<table><tr><th>Desde la muestra " + s + " de prueba</th>" + KINDS.map(function (k) { return "<th>" + k + "</th>"; }).join("") + "</tr>" +
+        "<tr><td>MSE directo (200)</td>" + KINDS.map(function (k) { return "<td" + (k === bd ? " class='best'" : "") + ">" + fmtSci(metrics[k].d) + "</td>"; }).join("") + "</tr>" +
+        "<tr><td>MSE autorregresivo (2000)</td>" + KINDS.map(function (k) { return "<td" + (k === ba ? " class='best'" : "") + ">" + fmtSci(metrics[k].a) + "</td>"; }).join("") + "</tr></table>";
+      $("runStatus").textContent = "Listo en " + Math.round(performance.now() - t0) + " ms.";
+      btn.disabled = false;
+    }, 30);
+  }
+  $("run").addEventListener("click", run);
+  run();
+})();
+</script>
+</body>
+</html>

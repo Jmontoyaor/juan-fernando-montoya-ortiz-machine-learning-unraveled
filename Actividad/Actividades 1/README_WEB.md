@@ -4,7 +4,7 @@
 
 | Forma | Qué hace | Cómo se abre |
 | --- | --- | --- |
-| **Página web** | Dibujar, usar la cámara o subir una imagen; ver la corrección a fondo negro y trazo blanco, las predicciones de ambas redes y todas las métricas. No instala nada. | <https://jmontoyaor.github.io/juan-fernando-montoya-ortiz-machine-learning-unraveled/mnist/> |
+| **Página web** | Dibujar, usar la cámara o subir una imagen; ver la corrección a fondo negro y trazo blanco, las predicciones de las tres redes y todas las métricas. Desde su menú se llega a Regresión y series de tiempo. No instala nada. | <https://jmontoyaor.github.io/juan-fernando-montoya-ortiz-machine-learning-unraveled/mnist/> |
 | **App local (localhost)** | Red densa y CNN original con dibujo o imagen, y además **entrenar** desde la interfaz. La CNN con pooling se entrena por comando y se ve en la página web. | Doble clic en `iniciar_app.bat` (Windows) o `./iniciar_app.sh` (Linux/macOS). Se abre <http://localhost:8501>. |
 | **Versión original OpenCV** | Cámara en tiempo real con osciloscopio (`app_cam.py`, `train.py`). Se conserva sin cambios. | Ver [README.md](README.md). |
 
@@ -160,16 +160,73 @@ La partición es estratificada y usa `random_state=42`, la misma para ambas rede
 - Con cámara influyen la luz, las sombras, el desenfoque y los números que tocan el borde del recuadro. Lo mejor es usar marcador grueso sobre papel blanco liso.
 - La versión web hace exactamente los mismos cálculos que Keras: la diferencia máxima medida es de 4·10⁻⁷ sobre 32 imágenes. Su preprocesamiento redimensiona por promedio de área en lugar de Lanczos, así que puede diferir levemente de la app local en los bordes grises.
 
+## Regresión y series de tiempo (`scratchpad_General.ipynb`)
+
+Página: <https://jmontoyaor.github.io/juan-fernando-montoya-ortiz-machine-learning-unraveled/mnist/senales.html>. Se llega desde el menú de la página de MNIST.
+
+### Regresión
+
+La salida es un número continuo, no una clase. Se mide con $\text{MSE} = \frac{1}{n}\sum (y_i - \hat y_i)^2$ y $\text{MAE} = \frac{1}{n}\sum |y_i - \hat y_i|$. Partición aleatoria 80/20 (`random_state=42`), Adam y lote 32, como en el notebook.
+
+| Ejemplo | Red | Parámetros | Épocas | MSE en prueba | Resultado |
+| --- | --- | ---: | ---: | ---: | --- |
+| Recta $y = 3x + 1$, $x \in [-10, 10)$ | `Dense(1)` | 2 | 100 | 1.0·10⁻⁷ | aprendió $y = 2.9999x + 0.9999$ |
+| Coseno $y = \cos(2\pi \cdot 2x)$, $x \in [-2, 2)$ | `Dense(64, relu) ×3 → Dense(1)` | 8 513 | 300 | 0.0010 | reproduce las 8 oscilaciones |
+
+La página dibuja también las predicciones **fuera del rango de entrenamiento**. La recta extrapola bien porque su modelo tiene la misma forma que la función real. El coseno no: fuera de $[-2, 2]$ la red con ReLU se vuelve una recta (en $x = 2.8$ predice 5.25 cuando el valor real es −0.81). Una red neuronal interpola dentro de sus datos, pero no descubre la fórmula.
+
+### Series de tiempo: comparación justa de RNN, LSTM y GRU
+
+Con 1000 muestras pasadas, cada red predice las 200 siguientes. Se evalúa en dos modos:
+- **Directo:** una sola predicción de 200 muestras.
+- **Autorregresivo:** 10 pasos de 200, en los que cada predicción entra en la ventana del paso siguiente, así que el error se acumula.
+
+**Igualdad de condiciones.** Las tres redes recurrentes y la DNN de referencia comparten:
+- la misma señal sintética (40 000 muestras: nivel, tendencia, dos ciclos y ruido) y las mismas ventanas (537 de entrenamiento, 97 de validación y 97 de prueba, una cada 50 muestras);
+- una división **cronológica** 70/15/15, para no entrenar con el futuro;
+- la normalización $z = (x - \mu)/\sigma$ con $\mu$ y $\sigma$ calculadas **solo con entrenamiento**;
+- 64 unidades, Adam (lr = 0.001), MSE, lote 32, hasta 100 épocas sin barajar;
+- EarlyStopping (paciencia 15, restaura los mejores pesos) y ReduceLROnPlateau (×0.5, paciencia 7);
+- la semilla 42, reiniciada antes de construir cada red.
+
+| | DNN (referencia) | RNN | LSTM | GRU |
+| --- | ---: | ---: | ---: | ---: |
+| Arquitectura | `Dense(64, relu) → Dense(200)` | `SimpleRNN(64) → Dense(200)` | `LSTM(64) → Dense(200)` | `GRU(64) → Dense(200)` |
+| Parámetros | 77 064 | 17 224 | 29 896 | 25 864 |
+| Épocas (early stopping) | 100 | 52 | 52 | 100 |
+| Tiempo (CPU) | 20 s | 87 s | 294 s | 596 s |
+| MSE en las 97 ventanas de prueba (normalizado) | **0.0043** | 0.1872 | 0.1915 | **0.1570** |
+| MSE directo, 200 muestras (unidades reales) | 0.0009 | 0.0149 | 0.0142 | **0.0077** |
+| MSE autorregresivo, 2000 muestras (unidades reales) | 0.0013 | 0.5630 | **0.4467** | 0.4850 |
+
+**Cómo leerlo.** Entre las tres recurrentes, la **GRU** tiene el menor error en las ventanas de prueba y en la predicción directa. La **LSTM** acumula menos error en el modo autorregresivo. La RNN simple, sin compuertas, es la más débil en general.
+
+La **DNN de referencia es unas 36 veces mejor** que la mejor recurrente, igual que en el notebook. No es un fallo del experimento. La señal es casi periódica y la DNN ve las 1000 muestras a la vez, así que una combinación casi lineal de ellas le basta para reproducir el patrón. Las recurrentes tienen que llevar esa información a través de 1000 pasos de memoria, donde el gradiente se debilita (desvanecimiento del gradiente). Las compuertas de la LSTM y la GRU lo mitigan, pero no lo eliminan con solo 64 unidades.
+
+Que la comparación sea justa no significa que los resultados sean iguales: significa que las diferencias vienen de la arquitectura y no de los datos ni del entrenamiento.
+
+En la página se puede elegir dónde empieza la predicción dentro del conjunto de prueba. Las cuatro redes predicen **en el navegador**: el motor JavaScript implementa Dense, SimpleRNN, LSTM y GRU con los pesos y el orden de compuertas de Keras, con una diferencia máxima medida de 10⁻⁶.
+
+```powershell
+$py = "$HOME\.venvs\mnist-a1\Scripts\python.exe"
+& $py train_signals.py --task regression    # ~1 min
+& $py train_signals.py --task timeseries    # ~17 min en CPU
+& $py export_web.py --part signals          # actualiza docs/mnist/signals_data.js
+```
+
+Código: `signal_models/regression.py`, `signal_models/timeseries.py`, `train_signals.py`; página: `docs/mnist/senales.html` y `docs/mnist/signals_core.js`.
+
 ## Cómo reproducir y verificar
 
 ```powershell
 $py = "$HOME\.venvs\mnist-a1\Scripts\python.exe"
-& $py -m unittest discover -s tests      # preprocesamiento, modelos, guardado/recarga
-& $py train_mnist.py --kind dense ; & $py train_mnist.py --kind cnn
+& $py -m unittest discover -s tests      # preprocesamiento, modelos, guardado/recarga, series y regresión
+& $py train_mnist.py --kind dense ; & $py train_mnist.py --kind cnn ; & $py train_mnist.py --kind cnn_pool
 & $py export_web.py
-node tests/test_web_core.js               # JavaScript vs. Keras, polaridad, lienzo vacío, cámara
+node tests/test_web_core.js               # MNIST: JavaScript vs. Keras, polaridad, lienzo vacío, cámara
+node tests/test_signals_core.js           # Regresión y series: JavaScript vs. Keras
 ```
 
 ## Ampliaciones futuras (hoja de ruta, fuera de esta actividad)
 
-Procesos estocásticos, modelos autorregresivos, procesamiento de lenguaje natural, otras tareas de imágenes, despliegue en la nube y sistemas embebidos son temas para actividades posteriores. No hay módulos implementados para ellos en este proyecto.
+Procesos estocásticos, procesamiento de lenguaje natural, otras tareas de imágenes, despliegue en la nube y sistemas embebidos son temas para actividades posteriores. Regresión, series de tiempo y predicción autorregresiva ya están implementadas (sección anterior).
